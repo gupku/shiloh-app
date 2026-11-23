@@ -1,0 +1,123 @@
+@import 'tailwindcss';
+
+/* Istok Web font (bundled in /public/fonts so it also works offline) */
+@font-face {
+  font-family: 'Istok Web';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/istok-web-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Istok Web';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/istok-web-700.woff2') format('woff2');
+}
+/* Inter (variable font: every weight from 100 to 900 in one file) */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/inter-latin-var.woff2') format('woff2');
+}
+
+/* Colours and shadows from the Figma design. Use them like bg-brand, shadow-figma, font-inter ... */
+@theme {
+  --font-sans: 'Istok Web', Arial, sans-serif;
+  --font-inter: 'Inter', Arial, sans-serif;
+
+  --color-brand: #ff0004; /* sidebar red */
+  --color-brand-strong: #ff0000; /* red buttons */
+  --color-brand-soft: #d76b6b; /* unselected Male/Female button */
+  --color-save: #fb4242; /* Save buttons on the forms */
+  --color-go: #03b939; /* "+ Add new Delegates" */
+  --color-figma-grey: #d9d9d9; /* country cards, + circles */
+  --color-stat: #c3c3c3; /* overview number boxes */
+  --color-login: #a5a5a5; /* login card */
+  --color-panel-dark: #414141; /* dark popups */
+
+  --shadow-figma: 0 4px 4px rgb(0 0 0 / 0.25);
+  --shadow-chip: 0 3px 4px rgb(0 0 0 / 0.25);
+  --shadow-sunken: inset 0 4px 4px rgb(0 0 0 / 0.18), 0 4px 4px rgb(0 0 0 / 0.25);
+  --shadow-card: 0 4px 2px rgb(0 0 0 / 0.25); /* admin cards */
+}
+
+@layer base {
+  body {
+    @apply text-black antialiased;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+@layer components {
+  /* Grey circle with a "+" (empty states) */
+  .plus-circle {
+    position: relative;
+    border-radius: 9999px;
+    background: var(--color-figma-grey);
+    box-shadow: var(--shadow-figma);
+    transition: transform 0.15s;
+  }
+  .plus-circle:hover {
+    transform: scale(1.05);
+  }
+  .plus-circle::before,
+  .plus-circle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: #434242;
+    transform: translate(-50%, -50%);
+  }
+  .plus-circle::before {
+    width: 46%;
+    height: 4px;
+  }
+  .plus-circle::after {
+    width: 4px;
+    height: 46%;
+  }
+}
+
+/* Printing: when a print preview (slip, door lists, directory) is open, only that sheet is printed */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  body:has(.slip) #root,
+  .slip-actions {
+    display: none;
+  }
+  .overlay:has(.slip) {
+    position: static;
+    display: block;
+    overflow: visible;
+    padding: 0;
+    background: none;
+  }
+  .overlay:has(.slip) > div {
+    max-width: none;
+  }
+  .slip {
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .page-break {
+    break-before: page;
+  }
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
