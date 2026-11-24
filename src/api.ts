@@ -9,6 +9,30 @@ export function setToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY)
 }
 
+// ---------- Sign out 5 minutes after the app was closed ----------
+// While any tab of the app is open it notes the time every 15 seconds (and when the tab is hidden or closed).
+// When the app opens again more than 5 minutes after that, the old login is dropped and you must sign in again.
+const LAST_SEEN_KEY = 'shiloh-last-seen'
+export const CLOSED_LOGOUT_MINUTES = 5
+
+const markSeen = () => localStorage.setItem(LAST_SEEN_KEY, String(Date.now()))
+
+function dropLoginIfClosedTooLong() {
+  const token = getToken()
+  if (!token) return
+  const lastSeen = Number(localStorage.getItem(LAST_SEEN_KEY))
+  if (lastSeen && Date.now() - lastSeen <= CLOSED_LOGOUT_MINUTES * 60_000) return
+  setToken(null)
+  // also end the session on the server (best effort)
+  void fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, keepalive: true }).catch(() => {})
+}
+
+dropLoginIfClosedTooLong()
+markSeen()
+setInterval(markSeen, 15_000)
+window.addEventListener('pagehide', markSeen)
+document.addEventListener('visibilitychange', markSeen)
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
