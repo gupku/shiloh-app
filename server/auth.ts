@@ -6,7 +6,12 @@ import { db } from './db.ts'
 // The app sends "Authorization: Bearer <token>" with every request after signing in
 export const tokenFrom = (req: Request) => req.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
 
+// How long a login lasts before the user has to sign in again
+export const SESSION_HOURS = 12
+const sessionCutoff = () => new Date(Date.now() - SESSION_HOURS * 60 * 60 * 1000).toISOString()
+
 export function createSession(userId: number) {
+  db.prepare('DELETE FROM sessions WHERE created_at <= ?').run(sessionCutoff()) // tidy up expired logins
   const token = crypto.randomBytes(32).toString('hex')
   db.prepare('INSERT INTO sessions (token, user_id) VALUES (?, ?)').run(token, userId)
   return token
@@ -25,12 +30,12 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   const token = tokenFrom(req)
   const user = token
     ? db
-        .prepare<[string], SessionRow>(
+        .prepare<[string, string], SessionRow>(
           `SELECT u.id, u.name, u.username, u.role, u.status
            FROM sessions s JOIN users u ON u.id = s.user_id
-           WHERE s.token = ?`,
+           WHERE s.token = ? AND s.created_at > ?`,
         )
-        .get(token)
+        .get(token, sessionCutoff())
     : undefined
 
   if (!user || user.status !== 'Active') {
