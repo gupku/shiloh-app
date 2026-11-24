@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { currentUser, requireAdmin, requireUser } from './auth.ts'
 import { loadAppData } from './data.ts'
+import { db } from './db.ts'
 import { authRouter } from './routes/auth.ts'
 import { countriesRouter } from './routes/countries.ts'
 import { hostelsRouter } from './routes/hostels.ts'
@@ -18,8 +19,8 @@ app.use(express.json())
 app.use('/api/auth', authRouter)
 
 // Everything the signed-in user's screens need (admins also get volunteers + audit log)
-app.get('/api/data', requireUser, (_req, res) => {
-  res.json(loadAppData(currentUser(res).role === 'admin'))
+app.get('/api/data', requireUser, async (_req, res) => {
+  res.json(await loadAppData(db, currentUser(res).role === 'admin'))
 })
 
 app.use('/api/countries', requireUser, countriesRouter)

@@ -38,7 +38,8 @@ Built from the "Shiloh App" Figma design.
 
 ## Database
 
-- Everything is saved in `database/shiloh.db` (created automatically on first run).
+- On your laptop everything is saved in `database/shiloh.db` (created automatically on first run).
+  The live site uses Turso instead (see Deploying).
 - To look inside it, install the VS Code extension **"SQLite Viewer"** and click the file.
 - To start again with an empty database, stop the app and delete the `database` folder.
 - Tables are defined in `server/schema.sql`.
@@ -60,9 +61,9 @@ public/   Images and fonts
 ## Deploying (Vercel)
 
 The repo is set up for Vercel: `vercel.json` runs `npm run vercel-build` (`scripts/vercel-build.mjs`), which
-builds the React app and packages the Express API as one serverless function. Import the GitHub repo in Vercel
-and deploy; no settings to change.
+builds the React app and packages the Express API as one serverless function. Pushing to `main` redeploys.
 
-Note: on Vercel the SQLite database lives in temporary storage, so the hosted copy is a **demo** — data can reset
-when the server goes idle. For the real event, move the database to a hosted one (e.g. Turso or Postgres) or run
-the app on a server with a disk (Render, Railway, a VPS).
+The live site keeps its data in a **Turso** database (cloud SQLite, added through Vercel → Storage), so halls,
+accounts and allocations are the same on every device. Vercel provides its keys as the environment variables
+`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. On your laptop, without those variables, the app keeps using
+`database/shiloh.db`. Logins expire after 12 hours (`SESSION_HOURS` in `server/auth.ts`).

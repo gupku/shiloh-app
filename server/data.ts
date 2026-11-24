@@ -1,5 +1,5 @@
 import type { AccountStatus, AppData, DelegateGroup, Gender, Role } from '../shared/types.ts'
-import { db } from './db.ts'
+import type { Runner } from './db.ts'
 
 // Database rows (snake_case) are turned into the objects the app uses (camelCase)
 
@@ -64,10 +64,8 @@ interface RulesRow {
   special_needs: number
 }
 
-export function loadAppData(includeAdminData: boolean): AppData {
-  const hostels = db
-    .prepare<[], HostelRow>('SELECT * FROM hostels ORDER BY id')
-    .all()
+export async function loadAppData(db: Runner, includeAdminData: boolean): Promise<AppData> {
+  const hostels = (await db.all<HostelRow>('SELECT * FROM hostels ORDER BY id'))
     .map((h) => ({
       id: h.id,
       name: h.name,
@@ -82,12 +80,12 @@ export function loadAppData(includeAdminData: boolean): AppData {
 
   // rooms come back in the order they were given out, so ranges like A201–A205 stay together
   const roomsByGroup = new Map<number, RoomRow[]>()
-  for (const row of db.prepare<[], RoomRow>('SELECT hostel_id, room, group_id FROM room_allocations ORDER BY rowid').all()) {
+  for (const row of (await db.all<RoomRow>('SELECT hostel_id, room, group_id FROM room_allocations ORDER BY rowid'))) {
     roomsByGroup.set(row.group_id, [...(roomsByGroup.get(row.group_id) ?? []), row])
   }
 
   const groupsByCountry = new Map<number, DelegateGroup[]>()
-  for (const g of db.prepare<[], GroupRow>('SELECT * FROM delegate_groups ORDER BY is_main DESC, id').all()) {
+  for (const g of (await db.all<GroupRow>('SELECT * FROM delegate_groups ORDER BY is_main DESC, id'))) {
     const rooms = roomsByGroup.get(g.id) ?? []
     const group: DelegateGroup = {
       id: g.id,
@@ -105,9 +103,7 @@ export function loadAppData(includeAdminData: boolean): AppData {
     groupsByCountry.set(g.country_id, [...(groupsByCountry.get(g.country_id) ?? []), group])
   }
 
-  const countries = db
-    .prepare<[], CountryRow>('SELECT * FROM countries ORDER BY id')
-    .all()
+  const countries = (await db.all<CountryRow>('SELECT * FROM countries ORDER BY id'))
     .map((c) => ({
       id: c.id,
       code: c.code,
@@ -120,11 +116,9 @@ export function loadAppData(includeAdminData: boolean): AppData {
       groups: groupsByCountry.get(c.id) ?? [],
     }))
 
-  const rules = db.prepare<[], RulesRow>('SELECT capacity, special_needs FROM rules WHERE id = 1').get()
+  const rules = await db.get<RulesRow>('SELECT capacity, special_needs FROM rules WHERE id = 1')
 
-  const accountRows = db
-    .prepare<[], AccountRow>('SELECT id, name, username, phone, role, desk, status, last_active FROM users ORDER BY role, id')
-    .all()
+  const accountRows = (await db.all<AccountRow>('SELECT id, name, username, phone, role, desk, status, last_active FROM users ORDER BY role, id'))
 
   // Phone numbers of active staff, for everyone's "Contact help" popup
   const contacts = accountRows
@@ -145,7 +139,7 @@ export function loadAppData(includeAdminData: boolean): AppData {
     : []
 
   const audits = includeAdminData
-    ? db.prepare<[], AuditRow>('SELECT id, time, actor, role, action, details FROM audit_logs ORDER BY id DESC LIMIT 500').all()
+    ? (await db.all<AuditRow>('SELECT id, time, actor, role, action, details FROM audit_logs ORDER BY id DESC LIMIT 500'))
     : []
 
   return {

@@ -18,7 +18,8 @@ fs.rmSync(out, { recursive: true, force: true })
 run('npx vite build')
 fs.cpSync(path.join(root, 'dist'), path.join(out, 'static'), { recursive: true })
 
-// 2. API: bundle server/app.ts (better-sqlite3 is native, so it is copied in instead of bundled)
+// 2. API: bundle server/app.ts into one file. On Vercel the database is Turso, reached with
+//    the pure-JavaScript client (@libsql/client/web), so there is nothing native to ship.
 fs.mkdirSync(fn, { recursive: true })
 fs.writeFileSync(
   path.join(fn, 'entry.ts'),
@@ -31,23 +32,12 @@ await build({
   platform: 'node',
   format: 'esm',
   target: 'node20',
-  external: ['better-sqlite3'],
+  alias: { '@libsql/client': '@libsql/client/web' },
   banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
 })
 fs.rmSync(path.join(fn, 'entry.ts'))
 fs.copyFileSync(path.join(root, 'server/schema.sql'), path.join(fn, 'schema.sql'))
-// Only the parts of better-sqlite3 needed at runtime (skips the bundled SQLite source and other platforms)
-const sqliteFrom = path.join(root, 'node_modules/better-sqlite3')
-fs.cpSync(sqliteFrom, path.join(fn, 'node_modules/better-sqlite3'), {
-  recursive: true,
-  filter: (src) => {
-    const rel = path.relative(sqliteFrom, src)
-    if (/^(deps|src|docs)(\/|$)/.test(rel)) return false
-    if (rel.startsWith('prebuilds/') && !rel.startsWith('prebuilds/linux')) return false
-    return true
-  },
-})
-const nodeMajor = process.versions.node.split('.')[0] // must match the Node that compiled better-sqlite3
+const nodeMajor = process.versions.node.split('.')[0]
 fs.writeFileSync(
   path.join(fn, '.vc-config.json'),
   JSON.stringify({ runtime: `nodejs${nodeMajor}.x`, handler: 'index.mjs', launcherType: 'Nodejs', shouldAddHelpers: false }, null, 2),

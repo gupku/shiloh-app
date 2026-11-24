@@ -7,18 +7,18 @@ import { wholeNumber } from '../validate.ts'
 export const rulesRouter = Router()
 
 // PUT /api/rules  { capacity, specialNeeds }
-rulesRouter.put('/', (req, res) => {
+rulesRouter.put('/', async (req, res) => {
   const capacity = wholeNumber(req.body?.capacity, 'Room capacity', 1, 20)
   const specialNeeds = req.body?.specialNeeds === true
-  const before = db.prepare<[], { capacity: number; special_needs: number }>('SELECT capacity, special_needs FROM rules WHERE id = 1').get()
+  const before = await db.get<{ capacity: number; special_needs: number }>('SELECT capacity, special_needs FROM rules WHERE id = 1')
 
   const changes: string[] = []
   if (before?.capacity !== capacity) changes.push(`Changed room capacity from ${before?.capacity} to ${capacity} beds/room`)
   if ((before?.special_needs === 1) !== specialNeeds) changes.push(`Special needs priority turned ${specialNeeds ? 'on' : 'off'}`)
 
-  db.transaction(() => {
-    db.prepare('UPDATE rules SET capacity = ?, special_needs = ? WHERE id = 1').run(capacity, specialNeeds ? 1 : 0)
-    if (changes.length) logAction(currentUser(res), 'Updated Rules', changes.join('; '))
-  })()
+  await db.transaction(async (tx) => {
+    await tx.run('UPDATE rules SET capacity = ?, special_needs = ? WHERE id = 1', capacity, specialNeeds ? 1 : 0)
+    if (changes.length) await logAction(tx, currentUser(res), 'Updated Rules', changes.join('; '))
+  })
   res.json({ ok: true })
 })
